@@ -55,10 +55,21 @@ function readEventLog(abi, contractAddress, eventName, fromBlock, toBlock) {
                     s += "  Date: " + eventDate + "\n";
                     s += "  Address: " + log.address + "\n";
                     s += "  Return Values: \n";
-                    s += "    Sender: " + log.returnValues.sender + "\n";
-                    s += "    Multiplier: " + log.returnValues.multiplier + "\n";
-                    s += "    Val: " + log.returnValues.val + "\n";
-                    s += "    Result: " + log.returnValues.result + "\n";
+
+                    for (var property in log.returnValues) {
+                        // Check hasOwnProperty to avoid additional properties that are part of the prototype
+                        // https://stackoverflow.com/questions/8312459/iterate-through-object-properties
+                        if (log.returnValues.hasOwnProperty(property))
+                        {
+                            // Ethereum (or Web3) seems to add two copies of the return values to the
+                            // object. One set has properties with the same name as the event parameers
+                            // and the other set has properties in the same order named 0, 1, 2...
+                            // Filter out the properties with fully numeric names.
+                            if (isNaN(property))
+                                s += "    " + property + ": " + log.returnValues[property] + "\n";
+                        }
+                    }
+
                     s += "  Blockhash: " + log.blockHash + "\n";
                     s += "  Block Number: " + log.blockNumber + "\n";
                     s += "  Log Index: " + log.logIndex + "\n";
