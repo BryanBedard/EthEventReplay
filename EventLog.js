@@ -36,29 +36,42 @@ function readEventLog(abi, contractAddress, eventName, fromBlock, toBlock) {
         { fromBlock: fromBlock, toBlock: toBlock },
     
         function (error, logs) {            
-            var s = "";
             for (var i = 0; i < logs.length; i++) {
                 var log = logs[i];
-                s += "Event:\n";
-                //s += "  Timestamp: " + block.timestamp + "\n";
-                s += "  Address: " + log.address + "\n";
-                s += "  Return Values: \n";
-                s += "    Sender: " + log.returnValues.sender + "\n";
-                s += "    Multiplier: " + log.returnValues.multiplier + "\n";
-                s += "    Val: " + log.returnValues.val + "\n";
-                s += "    Result: " + log.returnValues.result + "\n";
-                s += "  Blockhash: " + log.blockHash + "\n";
-                s += "  Block Number: " + log.blockNumber + "\n";
-                s += "  Log Index: " + log.logIndex + "\n";
-                s += "  Event: " + log.event + "\n";
-                s += "  Removed: " + log.removed + "\n";
-                s += "  Transaction Index: " + log.transactionIndex + "\n";
-                s += "  Transaction Hash: " + log.transactionHash + "\n";
-                s += "  ID: " + log.id + "\n";
-                s += "  Signature: " + log.signature + "\n";
-                s += "\n";
-            }
 
-            console.log(s);
+                // Promise.all waits for all of the promises in the array to complete then gives you an
+                // array with each of the promise results. You can pass a non-promise in the array and
+                // it just returns the value verbatim.
+                // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise/all
+                Promise.all(
+                    [log,
+                    web3.eth.getBlock(log.blockNumber)])
+                .then(values => {
+                    var log = values[0];
+                    var block = values[1];
+                    var eventDate = new Date(block.timestamp * 1000);   // Convert from seconds to milliseconds
+
+                    var s = "Event:\n";
+                    s += "  Date: " + eventDate + "\n";
+                    s += "  Address: " + log.address + "\n";
+                    s += "  Return Values: \n";
+                    s += "    Sender: " + log.returnValues.sender + "\n";
+                    s += "    Multiplier: " + log.returnValues.multiplier + "\n";
+                    s += "    Val: " + log.returnValues.val + "\n";
+                    s += "    Result: " + log.returnValues.result + "\n";
+                    s += "  Blockhash: " + log.blockHash + "\n";
+                    s += "  Block Number: " + log.blockNumber + "\n";
+                    s += "  Log Index: " + log.logIndex + "\n";
+                    s += "  Event: " + log.event + "\n";
+                    s += "  Removed: " + log.removed + "\n";
+                    s += "  Transaction Index: " + log.transactionIndex + "\n";
+                    s += "  Transaction Hash: " + log.transactionHash + "\n";
+                    s += "  ID: " + log.id + "\n";
+                    s += "  Signature: " + log.signature + "\n";
+                    s += "\n";
+
+                    console.log(s);                    
+                });
+            }
         });
 }
