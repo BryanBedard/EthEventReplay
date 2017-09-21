@@ -28,8 +28,8 @@ function init() {
     // Read the configuration from SQL Server
     // Create connection to database
     var config = {
-        userName: 'reTHINK', // update me
-        password: 'p0o9i8u7Y^', // update me
+        userName: '', // update me
+        password: '', // update me
         server: 'rethink-pchain-dev-ue-sql.database.windows.net',
         options: {
         database: 'EventReplay',
