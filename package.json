@@ -1,0 +1,25 @@
+{
+  "name": "eth-event-replay",
+  "version": "1.0.0",
+  "description": "Tool to replay Ethereum event logs.",
+  "main": "app.js",
+  "dependencies": {
+    "tedious": "^2.0.0",
+    "web3": "^1.0.0-beta.18",
+    "async": "^2.5.0"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/BryanBedard/EthEventReplay.git"
+  },
+  "author": "Title Source",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/BryanBedard/EthEventReplay/issues"
+  },
+  "homepage": "https://github.com/BryanBedard/EthEventReplay#readme"
+}
