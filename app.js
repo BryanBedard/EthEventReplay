@@ -5,10 +5,13 @@ var Connection = require('tedious').Connection;
 var Request = require('tedious').Request;
 var TYPES = require('tedious').TYPES;
 var async = require('async');
+var Repository = require("./Repository");
 
 // Module globals
 var web3;
 var connection;
+var subscriberName = "titlesource.com";
+var contractAddress = null;
 
 // Functions
 function init() {
@@ -29,7 +32,7 @@ function init() {
     // Create connection to database
     var config = {
         userName: '', // update me
-        password: '', // update me
+        password: '^', // update me
         server: 'rethink-pchain-dev-ue-sql.database.windows.net',
         options: {
         database: 'EventReplay',
@@ -48,6 +51,8 @@ function init() {
     
         async.waterfall(
             [start,
+            readSubscriber,
+            verifySubscriber,
             readContracts],
             complete);
         }
@@ -60,9 +65,22 @@ function start(callback) {
     callback(null);
 }
 
-function readContracts(callback) {
-    console.log('readContracts');
+function readSubscriber(callback) {
+    console.log("readSubscriber");
+    Repository.getSubscriber(connection, subscriberName, callback);
+    // Repository.getSubscriber calls the callback, don't need to do it here.
+}
 
+function verifySubscriber(subscriber, callback) {
+    if (!subscriber.SubscriberId) {
+        Repository.createSubscriber(connection, subscriberName, callback);
+    }
+    else
+        callback(null, subscriber);
+}
+
+function readContracts(subscriber, callback) {
+    console.log('readContracts');
     
     // Read all rows from table
     request = new Request(
@@ -107,7 +125,7 @@ function complete(err, result) {
 
 // Program
 // TODO: Pass in parameters for SubscriberName, ContractAddress, EventName and ReadFromBlock:
-//      If Subscribername is null, process all known active subscribers. If the passed subscriber does not exist, it will be inserted automatically into the database.
+//      SubscriberName. If the passed subscriber does not exist, it will be inserted automatically into the database.
 //      If ContractAddress is null, process all active contracts, otherwise process just that contract
 //      If EventName is null, process all active events, otherwise process just that event
 //      If ReadFromBlock is null, will read from the last block read for this subscriber. If a ReadFromBlock is specified
