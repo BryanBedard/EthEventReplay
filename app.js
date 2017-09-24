@@ -58,7 +58,7 @@ function init() {
         async.waterfall(
             [readSubscriber,
             verifySubscriber],
-            getSubscriberCompleted
+            readSubscriberCompleted
         )
     });    
 }
@@ -81,9 +81,9 @@ function verifySubscriber(subscriber, callback) {
     }
 }
 
-function getSubscriberCompleted(err, result)
+function readSubscriberCompleted(err, result)
 {
-    console.log('getSubscriberCompleted');    
+    console.log('readSubscriberCompleted');    
     if (err) {
         console.log(err)
     }
@@ -92,7 +92,7 @@ function getSubscriberCompleted(err, result)
         async.series(
             [readContracts,
             readEvents],
-            getContractsAndEventsCompleted
+            readContractsAndEventsCompleted
         )
     }
 }
@@ -109,9 +109,9 @@ function readEvents(callback) {
     // Repository.getEvents calls the callback, don't need to do it here.    
 }
 
-function getContractsAndEventsCompleted(err, results)
+function readContractsAndEventsCompleted(err, results)
 {
-    console.log('getContractsAndEventsCompleted');
+    console.log('readContractsAndEventsCompleted');
     if (err) {
         console.log(err)
     }
@@ -119,9 +119,65 @@ function getContractsAndEventsCompleted(err, results)
         contracts = results[0];
         events = results[1];
     }
-    connection.close();
+    
+    readEventLogs();
 }
 
+function readEventLogs() {
+    async.eachSeries(
+        events,
+        readEventLog,
+        readEventLogsCompleted
+    )
+
+}
+
+function readEventLog(item, callback) {
+    async.waterfall(
+        [(callback2) => { readSubscription(item, callback2); },
+        verifySubscription],
+        (err, result) => { readSubscriptionCompleted(err, result, callback); }
+    )
+}
+
+function readEventLogsCompleted(err) {
+    if (err) {
+        console.log(err);
+    }
+    connection.close();    
+}
+
+
+function readSubscription(event, callback) {
+    console.log("readSubscription");
+    Repository.getSubscription(connection, subscriber.SubscriberId, event.EventId, callback);
+    // Repository.getSubscrition calls the callback, don't need to do it here.
+}
+
+function verifySubscription(subscription, callback) {
+    console.log("verifySubscription");
+    if (!subscription.SubscriptionId) {
+        Repository.createSubscription(connection, subscription.SubscriberId, subscription.EventId, callback);
+        // Repository.createSubscription calls the callback, don't need to do it here.
+    }
+    else
+    {
+        callback(null, subscription);
+    }
+}
+
+function readSubscriptionCompleted(err, result, callback)
+{
+    console.log('readSubscriptionCompleted');    
+    if (err) {
+        console.log(err);
+        callback(err);
+    }
+    else {
+        // Read the event log (need the contract oject and the event object)
+        callback(null);
+    }
+}
 
 // Program
 // TODO: Pass in parameters for SubscriberName, ContractAddress, EventName and ReadFromBlock:
