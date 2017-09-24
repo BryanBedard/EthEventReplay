@@ -175,9 +175,75 @@ function readSubscriptionCompleted(err, result, callback)
     }
     else {
         // Read the event log (need the contract oject and the event object)
-        callback(null);
+        var logs = [];
+        var subscription = result;
+        event = getEvent(subscription.EventId);
+        contract = getContract(event.ContractId);
+        
+        readMoreLogs(logs, subscription, contract, event, callback);
     }
 }
+
+function readMoreLogs(logs, subscription, contract, event, callback) {
+    async.series(
+        [(callback2) => { 
+            EventLog.readEventLogs(
+                web3,
+                eval(contract.ContractABI),
+                contract.ContractAddress,
+                event.EventName,
+                0, //subscription.LastBlockRead + 1,   ** Use BigNumber
+                1000,
+                callback2); // subscription.LastBlockRead + 1 + 1000
+            }
+        ], 
+        (err, result) => {
+            if (err) {
+                callback(err);
+            }
+            else {
+                var eventLogs = result[0];
+                for (var i = 0; i < eventLogs.length; i++) {
+                    logs.push(eventLogs[i]);
+                }
+
+                if (eventLogs.length === 0) {
+                    callback(null, logs);
+                }
+                else {
+                    readMoreLogs(logs, subscription, contract, event, callback);
+                }                    
+            }                
+        }
+    );
+}
+
+function getEvent(eventId) {
+    var result = null;
+    for (var i = 0; i < events.length; i++) {
+        event = events[i];
+        if (event.EventId === eventId) {
+            result = event;
+            break;
+        }
+    }
+
+    return result;
+}
+
+function getContract(contractId) {
+    var result = null;
+    for (var i = 0; i < contracts.length; i++) {
+        contract = contracts[i];
+        if (contract.ContractId === contractId) {
+            result = contract;
+            break;
+        }
+    }
+
+    return result;
+}
+
 
 // Program
 // TODO: Pass in parameters for SubscriberName, ContractAddress, EventName and ReadFromBlock:
