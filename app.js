@@ -12,6 +12,11 @@ var web3;
 var connection;
 var subscriberName = "titlesource.com";
 var contractAddress = null;
+var eventName = null;
+
+var subscriber;
+var contracts;
+var events;
 
 // Functions
 function init() {
@@ -32,11 +37,11 @@ function init() {
     // Create connection to database
     var config = {
         userName: '', // update me
-        password: '^', // update me
+        password: '', // update me
         server: 'rethink-pchain-dev-ue-sql.database.windows.net',
         options: {
-        database: 'EventReplay',
-        encrypt: 'true'
+            database: 'EventReplay',
+            encrypt: 'true'
         }
     }
     
@@ -45,24 +50,17 @@ function init() {
     // Attempt to connect and execute queries if connection goes through
     connection.on('connect', function(err) {
         if (err) {
-        console.log(err);
+            console.log(err);
         } else {
-        console.log('Connected');
-    
-        async.waterfall(
-            [start,
-            readSubscriber,
-            verifySubscriber,
-            readContracts],
-            complete);
+            console.log('Connected');    
         }
+
+        async.waterfall(
+            [readSubscriber,
+            verifySubscriber],
+            getSubscriberCompleted
+        )
     });    
-}
-
-
-function start(callback) {
-    console.log("start");
-    callback(null);
 }
 
 function readSubscriber(callback) {
@@ -72,53 +70,55 @@ function readSubscriber(callback) {
 }
 
 function verifySubscriber(subscriber, callback) {
+    console.log("verifySubscriber");
     if (!subscriber.SubscriberId) {
         Repository.createSubscriber(connection, subscriberName, callback);
+        // Repository.createSubscriber calls the callback, don't need to do it here.
     }
     else
+    {
         callback(null, subscriber);
+    }
 }
 
-function readContracts(subscriber, callback) {
+function getSubscriberCompleted(err, result)
+{
+    console.log('getSubscriberCompleted');    
+    if (err) {
+        console.log(err)
+    }
+    else {
+        subscriber = result;
+        async.series(
+            [readContracts,
+            readEvents],
+            getContractsAndEventsCompleted
+        )
+    }
+}
+
+function readContracts(callback) {
     console.log('readContracts');
-    
-    // Read all rows from table
-    request = new Request(
-    'SELECT ContractId, ContractName, ContractAddress, ContractABI FROM Contract;',
-    function(err, rowCount, rows) {
-    if (err) {
-        callback(err);
-    } else {
-        console.log(rowCount + ' row(s) returned');
-        callback(null);
-    }
-    });
-
-    // Print the rows read
-    var result = "";
-    request.on('row', function(columns) {
-        columns.forEach(function(column) {
-            if (column.value === null) {
-                console.log('NULL');
-            } else {
-                result += column.value + " ";
-            }
-        });
-        console.log(result);
-        result = "";
-    });
-
-    // Execute SQL statement
-    connection.execSql(request);
+    Repository.getContracts(connection, contractAddress, callback);
+    // Repository.getContracts calls the callback, don't need to do it here.    
 }
 
-function complete(err, result) {
-    if (err) {
-        console.log(err);
-    } else {
-        console.log("complete");
-    }
+function readEvents(callback) {
+    console.log('readEvents');
+    Repository.getEvents(connection, contractAddress, eventName, callback);
+    // Repository.getEvents calls the callback, don't need to do it here.    
+}
 
+function getContractsAndEventsCompleted(err, results)
+{
+    console.log('getContractsAndEventsCompleted');
+    if (err) {
+        console.log(err)
+    }
+    else {
+        contracts = results[0];
+        events = results[1];
+    }
     connection.close();
 }
 

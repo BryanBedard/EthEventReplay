@@ -4,6 +4,8 @@ var Request = require('tedious').Request;
 var TYPES = require('tedious').TYPES;
 var async = require('async');
 var Subscriber = require("./Subscriber");
+var Contract = require("./Contract");
+var Event = require("./Event");
 
 // Exports
 module.exports = {
@@ -82,5 +84,93 @@ module.exports = {
     
         // Execute SQL statement
         connection.execSql(request);
-    }        
+    },
+
+    getContracts: function (connection, contractAddress, callback) {            
+        var result = [];
+        var sql = 'EXEC Contract_GetList';
+        var separator = '';
+        
+        if (contractAddress) {
+            sql += separator + ' @ContractAddress = ' + this.param(contractAddress);
+            separator = ",";
+        }
+
+        sql += ';';
+
+        request = new Request(
+            sql,
+            function(err, rowCount, rows) {
+            if (err) {
+                callback(err);
+            } else {
+                console.log(rowCount + ' row(s) returned');
+                callback(null, result);
+            }
+        });
+    
+        request.on('row', function(columns) {
+            var contract = new Contract();
+            contract.ContractId = columns[0].value;
+            contract.ContractName = columns[1].value;
+            contract.ContractAddress = columns[2].value;
+            contract.ContractABI = columns[3].value;
+            contract.IsActive = columns[4].value;
+            contract.CreatedBy = columns[5].value;
+            contract.CreatedDate = columns[6].value;
+            contract.UpdatedBy = columns[7].value;
+            contract.UpdatedDate = columns[8].value;
+
+            result.push(contract);
+        });
+    
+        // Execute SQL statement
+        connection.execSql(request);                    
+    },
+    
+    getEvents: function (connection, contractAddress, eventName, callback) {            
+        var result = [];
+        var sql = 'EXEC Event_GetList';
+        var separator = '';
+        
+        if (contractAddress) {
+            sql += separator + ' @ContractAddress = ' + this.param(contractAddress);
+            separator = ",";
+        }
+
+        if (eventName) {
+            sql += separator + ' @EventName = ' + this.param(eventName);
+            separator = ",";
+        }
+
+        sql += ';';
+        
+        request = new Request(
+            sql,
+            function(err, rowCount, rows) {
+            if (err) {
+                callback(err);
+            } else {
+                console.log(rowCount + ' row(s) returned');
+                callback(null, result);
+            }
+        });
+    
+        request.on('row', function(columns) {
+            var event = new Event();
+            event.EventId = columns[0].value;
+            event.ContractId = columns[1].value;
+            event.EventName = columns[3].value;
+            event.IsActive = columns[4].value;
+            event.CreatedBy = columns[5].value;
+            event.CreatedDate = columns[6].value;
+            event.UpdatedBy = columns[7].value;
+            event.UpdatedDate = columns[8].value;
+
+            result.push(event);
+        });
+    
+        // Execute SQL statement
+        connection.execSql(request);                    
+    }    
 }
