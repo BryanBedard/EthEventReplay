@@ -1,11 +1,12 @@
 // Dependencies
 var Web3 = require('web3');
-var EventLog = require('./EventLog');
+var EventLogReader = require('./EventLogReader');
 var Connection = require('tedious').Connection;
 var Request = require('tedious').Request;
 var TYPES = require('tedious').TYPES;
 var async = require('async');
 var Repository = require("./Repository");
+var BigNumber = require("big-number");
 
 // Module globals
 var web3;
@@ -187,14 +188,17 @@ function readSubscriptionCompleted(err, result, callback)
 function readMoreLogs(logs, subscription, contract, event, callback) {
     async.series(
         [(callback2) => { 
-            EventLog.readEventLogs(
+            var fromBlock = BigNumber.n(subscription.LastBlockRead.toString()).add(1);
+            var toBlock = BigNumber.n(subscription.LastBlockRead.toString()).add(10001);
+
+            EventLogReader.read(
                 web3,
                 eval(contract.ContractABI),
                 contract.ContractAddress,
                 event.EventName,
-                0, //subscription.LastBlockRead + 1,   ** Use BigNumber
-                1000,
-                callback2); // subscription.LastBlockRead + 1 + 1000
+                fromBlock,
+                toBlock,
+                callback2); 
             }
         ], 
         (err, result) => {
@@ -205,6 +209,7 @@ function readMoreLogs(logs, subscription, contract, event, callback) {
                 var eventLogs = result[0];
                 for (var i = 0; i < eventLogs.length; i++) {
                     logs.push(eventLogs[i]);
+                    subscription.LastBlockRead = BigNumber.n(eventLogs[i].blockNumber);
                 }
 
                 if (eventLogs.length === 0) {

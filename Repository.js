@@ -7,6 +7,7 @@ var Subscriber = require("./Subscriber");
 var Contract = require("./Contract");
 var Event = require("./Event");
 var Subscription = require("./Subscription");
+var BigNumber = require("big-number");
 
 // Exports
 module.exports = {
@@ -219,7 +220,7 @@ module.exports = {
             result.SubscriptionId = columns[0].value;
             result.SubscriberId = columns[1].value;
             result.EventId = columns[5].value;
-            result.LastBlockRead = columns[7].value;
+            result.LastBlockRead = BigNumber.n(columns[7].value);
             result.IsActive = columns[8].value;
             result.CreatedBy = columns[9].value;
             result.CreatedDate = columns[10].value;
@@ -265,7 +266,7 @@ module.exports = {
             result.SubscriptionId = columns[0].value;
             result.SubscriberId = columns[1].value;
             result.EventId = columns[2].value;
-            result.LastBlockRead = columns[3].value;
+            result.LastBlockRead = BigNumber.n(columns[3].value);
             result.IsActive = columns[4].value;
             result.CreatedBy = columns[5].value;
             result.CreatedDate = columns[6].value;
