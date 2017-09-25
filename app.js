@@ -18,6 +18,7 @@ var eventName = null;
 var subscriber;
 var contracts;
 var events;
+var latestBlockNumber;
 
 // Functions
 function init() {
@@ -34,7 +35,7 @@ function init() {
     var versionw3 = web3.version;
     console.log(versionw3 + " web3 version loaded");
 
-    // Read the configuration from SQL Server
+    // TODO: Read connection settings from a file
     // Create connection to database
     var config = {
         userName: '', // update me
@@ -91,11 +92,23 @@ function readSubscriberCompleted(err, result)
     else {
         subscriber = result;
         async.series(
-            [readContracts,
+            [getLatestBlockNumber,
+            readContracts,
             readEvents],
             readContractsAndEventsCompleted
         )
     }
+}
+
+function getLatestBlockNumber(callback) {
+    web3.eth.getBlockNumber((err, result) => {
+        if (err) {
+            callback(err);
+        }
+        else {
+            callback(null, result);
+        }        
+    });
 }
 
 function readContracts(callback) {
@@ -117,8 +130,9 @@ function readContractsAndEventsCompleted(err, results)
         console.log(err)
     }
     else {
-        contracts = results[0];
-        events = results[1];
+        latestBlockNumber = results[0];        
+        contracts = results[1];
+        events = results[2];
     }
     
     readEventLogs();
@@ -186,10 +200,18 @@ function readSubscriptionCompleted(err, result, callback)
 }
 
 function readMoreLogs(logs, subscription, contract, event, callback) {
+    var fromBlock;
+    var toBlock;
+
     async.series(
         [(callback2) => { 
-            var fromBlock = BigNumber.n(subscription.LastBlockRead.toString()).add(1);
-            var toBlock = BigNumber.n(subscription.LastBlockRead.toString()).add(10001);
+
+            fromBlock = BigNumber.n(subscription.LastBlockRead.toString()).add(1);
+            toBlock = BigNumber.n(subscription.LastBlockRead.toString()).add(100);
+            if (toBlock.gte(latestBlockNumber)) {
+                toBlock = BigNumber.n(latestBlockNumber);
+            }
+            
 
             EventLogReader.read(
                 web3,
@@ -209,10 +231,11 @@ function readMoreLogs(logs, subscription, contract, event, callback) {
                 var eventLogs = result[0];
                 for (var i = 0; i < eventLogs.length; i++) {
                     logs.push(eventLogs[i]);
-                    subscription.LastBlockRead = BigNumber.n(eventLogs[i].blockNumber);
                 }
 
-                if (eventLogs.length === 0) {
+                subscription.LastBlockRead = BigNumber.n(toBlock.toString());
+                
+                if (subscription.LastBlockRead.gte(latestBlockNumber)) {
                     callback(null, logs);
                 }
                 else {
@@ -259,14 +282,4 @@ function getContract(contractId) {
 //      will override the LastBlockRead and read from the specified block instead.
 // When locking, locks at the Subscription level. If a subscription does not exist for the subscriber/contract/event being processed a new subscription will automatically be created.
 init();
-
-/* Temporarily commented out while learning how to work with SQL Server 
-EventLog.readEventLog(
-    web3,
-    [{ "constant": false, "inputs": [{ "name": "val", "type": "int256" }], "name": "multiply", "outputs": [{ "name": "result", "type": "int256" }], "payable": false, "type": "function" }, { "inputs": [{ "name": "multiplier", "type": "int256" }], "payable": false, "type": "constructor" }, { "anonymous": false, "inputs": [{ "indexed": true, "name": "sender", "type": "address" }, { "indexed": false, "name": "multiplier", "type": "int256" }, { "indexed": false, "name": "val", "type": "int256" }, { "indexed": false, "name": "result", "type": "int256" }], "name": "Multiplied", "type": "event" }], // ABI
-    '0x243E72B69141f6af525a9A5FD939668EE9F2b354', // Contract Address
-    'Multiplied', // Event Name
-    0, // From Block
-    'latest' // To Block
-);*/
 
