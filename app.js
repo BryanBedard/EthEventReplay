@@ -8,20 +8,24 @@ var async = require('async');
 var Repository = require("./Repository");
 var BigNumber = require("big-number");
 
-// Module globals
-var web3;
-var connection;
-var subscriberName = "titlesource.com";
-var contractAddress = null;
-var eventName = null;
+// Parameters
+var params = new Object();
+params.subscriberName = "titlesource.com";
+params.contractAddress = null;
+params.eventName = null;
 
-var subscriber;
-var contracts;
-var events;
-var latestBlockNumber;
+// App Globals
+var app = new Object();
+app.web3 = null;
+app.connection = null;
+app.subscriber = null;
+app.contracts = null;
+app.events = null;
+app.latestBlockNumber = null;
+
 
 // Functions
-function init() {
+function run() {
     if (typeof web3 !== 'undefined') {
         web3 = new Web3(web3.currentProvider);
     }
@@ -47,80 +51,78 @@ function init() {
         }
     }
     
-    connection = new Connection(config);
+    app.connection = new Connection(config);
 
     // Attempt to connect and execute queries if connection goes through
-    connection.on('connect', function(err) {
+    app.connection.on('connect', function(err) {
         if (err) {
             console.log(err);
         } else {
             console.log('Connected');    
-        }
 
-        async.waterfall(
-            [readSubscriber,
-            verifySubscriber],
-            readSubscriberCompleted
-        )
+            async.waterfall(
+                [readSubscriber,
+                verifySubscriber],
+                readSubscriberCompleted
+            );
+        }
     });    
 }
 
 function readSubscriber(callback) {
     console.log("readSubscriber");
-    Repository.getSubscriber(connection, subscriberName, callback);
-    // Repository.getSubscriber calls the callback, don't need to do it here.
+    Repository.getSubscriber(app.connection, params.subscriberName, callback);
 }
 
 function verifySubscriber(subscriber, callback) {
     console.log("verifySubscriber");
+
     if (!subscriber.SubscriberId) {
-        Repository.createSubscriber(connection, subscriberName, callback);
-        // Repository.createSubscriber calls the callback, don't need to do it here.
+        Repository.createSubscriber(app.connection, params.subscriberName, callback);
     }
-    else
-    {
+    else {
         callback(null, subscriber);
     }
 }
 
-function readSubscriberCompleted(err, result)
+function readSubscriberCompleted(err, subscriber)
 {
     console.log('readSubscriberCompleted');    
+
     if (err) {
         console.log(err)
     }
     else {
-        subscriber = result;
+        app.subscriber = subscriber;
+
         async.series(
             [getLatestBlockNumber,
             readContracts,
             readEvents],
             readContractsAndEventsCompleted
-        )
+        );
     }
 }
 
 function getLatestBlockNumber(callback) {
-    web3.eth.getBlockNumber((err, result) => {
+    web3.eth.getBlockNumber((err, latestBlockNumber) => {
         if (err) {
             callback(err);
         }
         else {
-            callback(null, result);
+            callback(null, latestBlockNumber);
         }        
     });
 }
 
 function readContracts(callback) {
     console.log('readContracts');
-    Repository.getContracts(connection, contractAddress, callback);
-    // Repository.getContracts calls the callback, don't need to do it here.    
+    Repository.getContracts(app.connection, params.contractAddress, callback);
 }
 
 function readEvents(callback) {
-    console.log('readEvents');
-    Repository.getEvents(connection, contractAddress, eventName, callback);
-    // Repository.getEvents calls the callback, don't need to do it here.    
+    console.log('readEvents');        
+    Repository.getEvents(app.connection, params.contractAddress, params.eventName, callback);
 }
 
 function readContractsAndEventsCompleted(err, results)
@@ -130,9 +132,9 @@ function readContractsAndEventsCompleted(err, results)
         console.log(err)
     }
     else {
-        latestBlockNumber = results[0];        
-        contracts = results[1];
-        events = results[2];
+        app.latestBlockNumber = results[0];        
+        app.contracts = results[1];
+        app.events = results[2];
     }
     
     readEventLogs();
@@ -140,18 +142,24 @@ function readContractsAndEventsCompleted(err, results)
 
 function readEventLogs() {
     async.eachSeries(
-        events,
+        app.events,
         readEventLog,
         readEventLogsCompleted
-    )
-
+    );
 }
 
-function readEventLog(item, callback) {
+function readEventLog(event, callback) {
     async.waterfall(
-        [(callback2) => { readSubscription(item, callback2); },
+        [(callback2) => readSubscription(event, callback2),
         verifySubscription],
-        (err, result) => { readSubscriptionCompleted(err, result, callback); }
+        (err, subscription) => {
+            if (err) {
+                console.log(err);
+            }
+            else {                
+                startReadingLogs(subscription, callback)
+            }
+        }
     )
 }
 
@@ -159,21 +167,20 @@ function readEventLogsCompleted(err) {
     if (err) {
         console.log(err);
     }
-    connection.close();    
+    
+    app.connection.close();    
 }
 
 
 function readSubscription(event, callback) {
     console.log("readSubscription");
-    Repository.getSubscription(connection, subscriber.SubscriberId, event.EventId, callback);
-    // Repository.getSubscrition calls the callback, don't need to do it here.
+    Repository.getSubscription(app.connection, app.subscriber.SubscriberId, event.EventId, callback);
 }
 
 function verifySubscription(subscription, callback) {
     console.log("verifySubscription");
     if (!subscription.SubscriptionId) {
-        Repository.createSubscription(connection, subscription.SubscriberId, subscription.EventId, callback);
-        // Repository.createSubscription calls the callback, don't need to do it here.
+        Repository.createSubscription(app.connection, subscription.SubscriberId, subscription.EventId, callback);
     }
     else
     {
@@ -181,75 +188,58 @@ function verifySubscription(subscription, callback) {
     }
 }
 
-function readSubscriptionCompleted(err, result, callback)
+function startReadingLogs(subscription, callback)
 {
-    console.log('readSubscriptionCompleted');    
-    if (err) {
-        console.log(err);
-        callback(err);
-    }
-    else {
-        // Read the event log (need the contract oject and the event object)
-        var logs = [];
-        var subscription = result;
-        event = getEvent(subscription.EventId);
-        contract = getContract(event.ContractId);
-        
-        readMoreLogs(logs, subscription, contract, event, callback);
-    }
+    console.log('startReadingLogs');    
+
+    // Read the event log (need the contract oject and the event object)
+    var logs = [];
+    event = getEvent(subscription.EventId);
+    contract = getContract(event.ContractId);
+    
+    readMoreLogs(logs, subscription, contract, event, callback);
 }
 
 function readMoreLogs(logs, subscription, contract, event, callback) {
-    var fromBlock;
-    var toBlock;
-
-    async.series(
-        [(callback2) => { 
-
-            fromBlock = BigNumber.n(subscription.LastBlockRead.toString()).add(1);
-            toBlock = BigNumber.n(subscription.LastBlockRead.toString()).add(100);
-            if (toBlock.gte(latestBlockNumber)) {
-                toBlock = BigNumber.n(latestBlockNumber);
-            }
-            
-
-            EventLogReader.read(
-                web3,
-                eval(contract.ContractABI),
-                contract.ContractAddress,
-                event.EventName,
-                fromBlock,
-                toBlock,
-                callback2); 
-            }
-        ], 
-        (err, result) => {
+    var fromBlock = BigNumber.n(subscription.LastBlockRead.toString()).add(1);
+    var toBlock = BigNumber.n(subscription.LastBlockRead.toString()).add(100);
+    if (toBlock.gte(app.latestBlockNumber)) {
+        toBlock = BigNumber.n(app.latestBlockNumber);
+    }
+    
+    EventLogReader.read(
+        web3,
+        eval(contract.ContractABI),
+        contract.ContractAddress,
+        event.EventName,
+        fromBlock,
+        toBlock,
+        (err, eventLogs) => {
             if (err) {
                 callback(err);
             }
             else {
-                var eventLogs = result[0];
                 for (var i = 0; i < eventLogs.length; i++) {
                     logs.push(eventLogs[i]);
                 }
 
                 subscription.LastBlockRead = BigNumber.n(toBlock.toString());
                 
-                if (subscription.LastBlockRead.gte(latestBlockNumber)) {
+                if (subscription.LastBlockRead.gte(app.latestBlockNumber)) {
                     callback(null, logs);
                 }
                 else {
                     readMoreLogs(logs, subscription, contract, event, callback);
                 }                    
-            }                
+            }
         }
     );
 }
 
 function getEvent(eventId) {
     var result = null;
-    for (var i = 0; i < events.length; i++) {
-        event = events[i];
+    for (var i = 0; i < app.events.length; i++) {
+        event = app.events[i];
         if (event.EventId === eventId) {
             result = event;
             break;
@@ -261,8 +251,8 @@ function getEvent(eventId) {
 
 function getContract(contractId) {
     var result = null;
-    for (var i = 0; i < contracts.length; i++) {
-        contract = contracts[i];
+    for (var i = 0; i < app.contracts.length; i++) {
+        contract = app.contracts[i];
         if (contract.ContractId === contractId) {
             result = contract;
             break;
@@ -281,5 +271,4 @@ function getContract(contractId) {
 //      If ReadFromBlock is null, will read from the last block read for this subscriber. If a ReadFromBlock is specified
 //      will override the LastBlockRead and read from the specified block instead.
 // When locking, locks at the Subscription level. If a subscription does not exist for the subscriber/contract/event being processed a new subscription will automatically be created.
-init();
-
+run();
