@@ -26,6 +26,8 @@ app.latestBlockNumber = null;
 
 // Functions
 function run() {
+    console.log('run');
+
     if (typeof web3 !== 'undefined') {
         web3 = new Web3(web3.currentProvider);
     }
@@ -74,12 +76,12 @@ function run() {
 }
 
 function readSubscriber(callback) {
-    console.log("readSubscriber");
+    console.log('readSubscriber');
     Repository.getSubscriber(app.connection, params.subscriberName, callback);
 }
 
 function verifySubscriber(subscriber, callback) {
-    console.log("verifySubscriber");
+    console.log('verifySubscriber');
 
     if (!subscriber.SubscriberId) {
         Repository.createSubscriber(app.connection, params.subscriberName, callback);
@@ -109,6 +111,8 @@ function readSubscriberCompleted(err, subscriber)
 }
 
 function getLatestBlockNumber(callback) {
+    console.log('getLatestBlockNumber');
+
     web3.eth.getBlockNumber((err, latestBlockNumber) => {
         if (err) {
             callback(err);
@@ -132,6 +136,7 @@ function readEvents(callback) {
 function readContractsAndEventsCompleted(err, results)
 {
     console.log('readContractsAndEventsCompleted');
+
     if (err) {
         console.log(err)
     }
@@ -139,12 +144,16 @@ function readContractsAndEventsCompleted(err, results)
         app.latestBlockNumber = results[0];        
         app.contracts = results[1];
         app.events = results[2];
+
+        console.log('Latest Block Number: ' + app.latestBlockNumber);
     }
     
     readEventLogs();
 }
 
 function readEventLogs() {
+    console.log('readEventLogs');
+
     async.eachSeries(
         app.events,
         readEventLog,
@@ -153,6 +162,8 @@ function readEventLogs() {
 }
 
 function readEventLog(event, callback) {
+    console.log('readEventLog');
+
     async.waterfall(
         [(callback2) => readSubscription(event, callback2),
         verifySubscription],
@@ -168,6 +179,8 @@ function readEventLog(event, callback) {
 }
 
 function readEventLogsCompleted(err) {
+    console.log('readEventLogsCompleted');
+
     if (err) {
         console.log(err);
     }
@@ -177,12 +190,12 @@ function readEventLogsCompleted(err) {
 
 
 function readSubscription(event, callback) {
-    console.log("readSubscription");
+    console.log('readSubscription');
     Repository.getSubscription(app.connection, app.subscriber.SubscriberId, event.EventId, callback);
 }
 
 function verifySubscription(subscription, callback) {
-    console.log("verifySubscription");
+    console.log('verifySubscription');
     if (!subscription.SubscriptionId) {
         Repository.createSubscription(app.connection, subscription.SubscriberId, subscription.EventId, callback);
     }
@@ -205,6 +218,8 @@ function startReadingLogs(subscription, callback)
 }
 
 function readMoreLogs(logs, subscription, contract, event, callback) {
+    console.log('readMoreLogs');
+
     var fromBlock = BigNumber.n(subscription.LastBlockRead.toString()).add(1);
     var toBlock = BigNumber.n(subscription.LastBlockRead.toString()).add(100);
     if (toBlock.gte(app.latestBlockNumber)) {
