@@ -22,11 +22,14 @@ app.subscriber = null;
 app.contracts = null;
 app.events = null;
 app.latestBlockNumber = null;
+app.eventLogCallback = null;
 
 
 // Functions
-function run() {
+function run(callback) {
     console.log('run');
+
+    app.eventLogCallback = callback;
 
     if (typeof web3 !== 'undefined') {
         web3 = new Web3(web3.currentProvider);
@@ -210,14 +213,13 @@ function startReadingLogs(subscription, callback)
     console.log('startReadingLogs');    
 
     // Read the event log (need the contract oject and the event object)
-    var logs = [];
     event = getEvent(subscription.EventId);
     contract = getContract(event.ContractId);
     
-    readMoreLogs(logs, subscription, contract, event, callback);
+    readMoreLogs(subscription, contract, event, callback);
 }
 
-function readMoreLogs(logs, subscription, contract, event, callback) {
+function readMoreLogs(subscription, contract, event, callback) {
     console.log('readMoreLogs');
 
     var fromBlock = BigNumber.n(subscription.LastBlockRead.toString()).add(1);
@@ -239,13 +241,20 @@ function readMoreLogs(logs, subscription, contract, event, callback) {
             }
             else {
                 for (var i = 0; i < eventLogs.length; i++) {
-                    logs.push(eventLogs[i]);
+                    if (app.eventLogCallback) {
+                        app.eventLogCallback(
+                            app.subscriber.SubscriberName,
+                            contract.contracctAddress,
+                            event.eventName,
+                            eventLogs[i]
+                        );
+                    }
                 }
 
                 subscription.LastBlockRead = BigNumber.n(toBlock.toString());
                 
                 if (subscription.LastBlockRead.gte(app.latestBlockNumber)) {
-                    callback(null, logs);
+                    callback(null);
                 }
                 else {
                     readMoreLogs(logs, subscription, contract, event, callback);
@@ -281,7 +290,6 @@ function getContract(contractId) {
     return result;
 }
 
-
 // Program
 // TODO: Pass in parameters for SubscriberName, ContractAddress, EventName and ReadFromBlock:
 //      SubscriberName. If the passed subscriber does not exist, it will be inserted automatically into the database.
@@ -290,4 +298,8 @@ function getContract(contractId) {
 //      If ReadFromBlock is null, will read from the last block read for this subscriber. If a ReadFromBlock is specified
 //      will override the LastBlockRead and read from the specified block instead.
 // When locking, locks at the Subscription level. If a subscription does not exist for the subscriber/contract/event being processed a new subscription will automatically be created.
-run();
+run((subscriberName, contractAddress, eventName, eventLog) => {
+        // Take whatever ation you want here in response to the event (e.g. write to a database)
+        console.log(eventLog.toString());
+    }    
+);

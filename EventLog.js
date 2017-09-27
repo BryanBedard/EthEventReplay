@@ -14,28 +14,28 @@
 
     this.toString = function() {
         var s = "Event:\n";
-        s += "  Date: " + eventDate + "\n";
-        s += "  Address: " + address + "\n";
+        s += "  Date: " + this.eventDate + "\n";
+        s += "  Address: " + this.address + "\n";
         s += "  Return Values: \n";
 
-        for (var property in returnValues) {
+        for (var property in this.returnValues) {
             // Check hasOwnProperty to avoid additional properties that are part of the prototype
             // https://stackoverflow.com/questions/8312459/iterate-through-object-properties
-            if (returnValues.hasOwnProperty(property))
+            if (this.returnValues.hasOwnProperty(property))
             {
-                s += "    " + property + ": " + returnValues[property] + "\n";
+                s += "    " + property + ": " + this.returnValues[property] + "\n";
             }
         }
 
-        s += "  BlockHash: " + blockHash + "\n";
-        s += "  Block Number: " + blockNumber + "\n";
-        s += "  Log Index: " + logIndex + "\n";
-        s += "  Event: " + eventName + "\n";
-        s += "  Removed: " + removed + "\n";
-        s += "  Transaction Index: " + transactionIndex + "\n";
-        s += "  Transaction Hash: " + transactionHash + "\n";
-        s += "  ID: " + id + "\n";
-        s += "  Signature: " + signature + "\n";
+        s += "  BlockHash: " + this.blockHash + "\n";
+        s += "  Block Number: " + this.blockNumber + "\n";
+        s += "  Log Index: " + this.logIndex + "\n";
+        s += "  Event: " + this.eventName + "\n";
+        s += "  Removed: " + this.removed + "\n";
+        s += "  Transaction Index: " + this.transactionIndex + "\n";
+        s += "  Transaction Hash: " + this.transactionHash + "\n";
+        s += "  ID: " + this.id + "\n";
+        s += "  Signature: " + this.signature + "\n";
         s += "\n";
 
         return s;
