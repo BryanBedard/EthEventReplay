@@ -54,19 +54,23 @@ function run() {
     app.connection = new Connection(config);
 
     // Attempt to connect and execute queries if connection goes through
-    app.connection.on('connect', function(err) {
-        if (err) {
-            console.log(err);
-        } else {
-            console.log('Connected');    
+    app.connection.on(
+        'connect', 
+        (err) => {
+            if (err) {
+                console.log(err);
+            }
+            else {
+                console.log('Connected');    
 
-            async.waterfall(
-                [readSubscriber,
-                verifySubscriber],
-                readSubscriberCompleted
-            );
+                async.waterfall(
+                    [readSubscriber,
+                    verifySubscriber],
+                    readSubscriberCompleted
+                );
+            }
         }
-    });    
+    );    
 }
 
 function readSubscriber(callback) {
