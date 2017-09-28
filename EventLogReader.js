@@ -13,13 +13,13 @@ module.exports = {
                     callback(err);
                 }
                 else {
-                    this.logsToEventLogs(logs, callback);
+                    this.logsToEventLogs(web3, logs, callback);
                 }
             }
         );
     },
 
-    logsToEventLogs: function (logs, callback) {
+    logsToEventLogs: function (web3, logs, callback) {
         var result = [];        
         async.eachSeries(
             logs,
